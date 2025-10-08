@@ -1,0 +1,287 @@
+{
+  "name": "Linkedin post generator",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "581436b7-b2ed-4674-969f-894e34de0134",
+              "leftValue": "={{ $json.Status }}",
+              "rightValue": "pending",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        32,
+        -16
+      ],
+      "id": "354950c1-ed1a-4e56-9c84-05cac57bcb9c",
+      "name": "If"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        320,
+        -32
+      ],
+      "id": "d9d22e21-875e-498e-958f-f4082266b03b",
+      "name": "Limit"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a LinkedIn post writer. You will be given a title and your task is to create an engaging LinkedIn post based on that title.\n\nYour post should:\n1. Begin with a compelling hook related to the title\n2. Include 3-4 paragraphs of informative content\n3. End with a question to encourage engagement\n4. Include 4-6 relevant hashtags\n5. Use appropriate emojis in between\n\nImportant formatting requirements:\n- Format all paragraphs with proper newline characters (\\n\\n) between them\n- Ensure the text is properly escaped for JSON\n- Do not use double quotes (\"\") in response or any special character\n- Do not put asterisks\n- Keep the overall length appropriate for LinkedIn (under 3000 characters)\n\nNow, create a LinkedIn post based on the following title:\n{{ $json['Linkedin Post Title'] }}\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        512,
+        -32
+      ],
+      "id": "cf7a2f66-998b-487e-bc46-1d3e44ebbad8",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        448,
+        160
+      ],
+      "id": "5b371b9e-dafb-4d41-bfd2-d5deb27b9fcb",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "1sLMWA49pRxYlDWD",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Get the raw AI output string from the AI node\nconst rawOutput = items[0].json.output; // replace with your actual field if different\n\n// Remove the ```json wrapping if present\nlet cleanedOutput = rawOutput.replace(/```json\\\\n|```/g, '').trim();\n\n// Extract the \"post\" content using regex\nconst match = cleanedOutput.match(/\"post\":\\s*\"([\\s\\S]*?)\"\\s*}/);\n\nlet postText = '';\nif (match && match[1]) {\n    // Replace escaped newlines with spaces for human-readable format\n    postText = match[1].replace(/\\\\n/g, ' ').trim();\n}\n\nreturn [\n  {\n    json: {\n      post: postText\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        -32
+      ],
+      "id": "a3c655b1-0a5a-43e5-b74d-88de64ca71cf",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "url": "https://api.linkedin.com/v2/userinfo",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer (your api key)"
+            },
+            {
+              "name": "X-RestLi-Protocol-Version",
+              "value": "2.0.0"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1104,
+        -48
+      ],
+      "id": "deef84b1-177b-4dd0-a819-0f26afc0076b",
+      "name": "get the post"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linkedin.com/v2/ugcPosts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"author\": \"urn:li:person:xLsT4anF2G\",\n  \"lifecycleState\": \"PUBLISHED\",\n  \"specificContent\": {\n    \"com.linkedin.ugc.ShareContent\": {\n      \"shareCommentary\": {\n        \"text\": \"{{$('Code in JavaScript').item.json.post}}\"\n      },\n      \"shareMediaCategory\": \"NONE\"\n    }\n  },\n  \"visibility\": {\n    \"com.linkedin.ugc.MemberNetworkVisibility\": \"PUBLIC\"\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1312,
+        -48
+      ],
+      "id": "037576e7-aeca-466a-b08d-8ad9c1b580c5",
+      "name": "post that",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "OHkKZalQaE2KfrNJ",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "1wb6_sLIWqnP6Zc6MzpMm2dFsFNjuo8-VzZeFS-rBFNQ",
+          "mode": "list",
+          "cachedResultName": "Linkedin post",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wb6_sLIWqnP6Zc6MzpMm2dFsFNjuo8-VzZeFS-rBFNQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wb6_sLIWqnP6Zc6MzpMm2dFsFNjuo8-VzZeFS-rBFNQ/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        -16
+      ],
+      "id": "321fff7b-c5a9-4c0d-892c-967dc103a128",
+      "name": "trigger",
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "PnikMi6FDqB6q3A6",
+          "name": "Google Sheets Trigger account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "get the post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get the post": {
+      "main": [
+        [
+          {
+            "node": "post that",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "post that": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "dc74bc14-15b7-4f69-b3ab-26e73a2a5cfb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c4019fd7f7941532809a0d9f3ab1595cfebfc95849dae58d6e5ab8c3ff7eb25d"
+  },
+  "id": "VdHmQvSVBy5GYcRa",
+  "tags": []
+}
