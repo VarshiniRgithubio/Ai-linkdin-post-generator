@@ -1,4 +1,4 @@
-LinkedIn Auto Post Workflow (n8n)
+# LinkedIn Auto Post Workflow (n8n)
 📖 About
 
 This workflow automatically creates and posts LinkedIn content using Google Sheets, Gemini AI, and the LinkedIn API.
